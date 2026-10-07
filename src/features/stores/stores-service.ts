@@ -207,6 +207,7 @@ export async function getMyStoreProducts(
   page = 1,
   options: {
     category?: string;
+    isFeatured?: boolean;
     isCustomQuantity?: boolean;
     pageSize?: number;
     search?: string;
@@ -218,6 +219,7 @@ export async function getMyStoreProducts(
       params: {
         page,
         ...(options.category ? { category: options.category } : {}),
+        ...(options.isFeatured ? { is_featured: true } : {}),
         ...(options.isCustomQuantity ? { is_custom_quantity: true } : {}),
         ...(options.pageSize ? { page_size: options.pageSize } : {}),
         ...(options.search ? { search: options.search } : {}),

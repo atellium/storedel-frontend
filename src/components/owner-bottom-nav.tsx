@@ -31,6 +31,7 @@ export function OwnerBottomNav({ storeSlug }: { storeSlug: string }) {
 
   if (
     isOrderDetailPath(pathname, storeSlug) ||
+    isProductFormPath(pathname, storeSlug) ||
     isSettingsDetailPath(pathname, storeSlug)
   ) {
     return null;
@@ -81,6 +82,18 @@ function isOrderDetailPath(pathname: string, storeSlug: string) {
     Boolean(segments[3]) &&
     (segments.length === 4 ||
       (segments.length === 5 && segments[4] === "preparing"))
+  );
+}
+
+function isProductFormPath(pathname: string, storeSlug: string) {
+  const segments = pathname.split("/").filter(Boolean);
+
+  return (
+    segments[0] === storeSlug &&
+    segments[1] === "manage" &&
+    segments[2] === "products" &&
+    (segments[3] === "add" ||
+      (Boolean(segments[3]) && segments[4] === "edit" && segments.length === 5))
   );
 }
 

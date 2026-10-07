@@ -39,7 +39,7 @@ export function ProductCategorySelector({
       <label htmlFor="category-search" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
         Categories *
       </label>
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 transition-colors focus-within:border-primary/50 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary/20">
+      <div className="rounded-xl border border-gray-200 bg-white p-2 transition-colors focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20">
         {selectedCategories.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {selectedCategories.map((category) => (
