@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { SavedStoresView } from "@/features/stores/saved-stores-view";
-import { getStores } from "@/features/stores/stores-service";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://storedel.com";
 const DEFAULT_OG_IMAGE = "/icons/app-icon.png";
@@ -46,7 +45,5 @@ export const metadata: Metadata = {
 };
 
 export default async function StoresPage() {
-  const stores = await getStores();
-
-  return <SavedStoresView stores={stores} />;
+  return <SavedStoresView stores={[]} />;
 }

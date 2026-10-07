@@ -116,6 +116,7 @@ export type ProductVariantDraft = {
   is_active: boolean;
   sort_order: number;
   display_measurement?: string;
+  name?: string;
   bundle_unit_cost_price?: number | null;
   bundle_unit_mrp?: number | null;
   bundle_unit_price?: number | null;

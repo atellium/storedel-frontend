@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/features/auth/auth-guard";
 import type { StoreProduct } from "@/features/stores/types";
+import { useAppDispatch } from "@/store/hooks";
+import { showToast } from "@/store/slices/ui-slice";
 import {
   createProductVariants,
   createStoreProduct,
   getStoreProduct,
-  updateProductVariants,
   updateStoreProduct,
 } from "../product-service";
 import {
@@ -50,6 +51,7 @@ export function ProductFormPage(props: ProductFormProps) {
 
 function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [values, setValues] = useState<ProductFormValues>(createInitialValues());
   const [variants, setVariants] = useState<ProductVariantDraft[]>([]);
   const [specRows, setSpecRows] = useState<SpecRow[]>([]);
@@ -196,12 +198,15 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
       });
 
       if (isEdit && productId) {
-        const product = await updateStoreProduct(storeSlug, productId, productPayload);
-        if (variantPayload.length > 0) {
-          await updateProductVariants(storeSlug, product.id, variantPayload);
-        }
+        await updateStoreProduct(storeSlug, productId, productPayload);
         setIsDirty(false);
-        setMessage("Product updated successfully.");
+        dispatch(
+          showToast({
+            title: "Product updated",
+            message: "Your product changes were saved.",
+            type: "success",
+          }),
+        );
         router.push(`/${storeSlug}/manage/products`);
         return;
       }
@@ -219,7 +224,13 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
       }
 
       setIsDirty(false);
-      setMessage("Product created successfully.");
+      dispatch(
+        showToast({
+          title: "Product created",
+          message: "Your product was added to the store.",
+          type: "success",
+        }),
+      );
       router.push(`/${storeSlug}/manage/products`);
     } catch (error) {
       setStatus("idle");
@@ -261,7 +272,7 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
       subtitle={isEdit ? values.name : undefined}
       onBack={handleCancel}
     >
-      <div className="space-y-5 pb-24">
+      <div className="space-y-5">
         {message && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 shadow-sm">
             {message}
@@ -312,7 +323,7 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
                     onClick={() => setField("measurement_type", type)}
                     className={`rounded-xl border p-3 text-left transition active:scale-95 ${values.measurement_type === type
                         ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/20"
-                        : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                       }`}
                   >
                     <span className="block text-[13px] font-bold">{typeLabel(type)}</span>
@@ -367,7 +378,8 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
               enableBundleCreation={!values.allow_custom_quantity}
               measurementType={values.measurement_type}
               openFirstWhenEmpty={!values.allow_custom_quantity && activeStep === "variants"}
-              removeSavedLabel="Mark inactive"
+              productId={productId}
+              storeSlug={storeSlug}
               title={values.allow_custom_quantity ? "Quick Presets" : "Variants"}
               variants={variants}
               onChange={(nextVariants) => {
@@ -426,11 +438,11 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
           />
         )}
 
-        <div className="fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full max-w-[640px] grid-cols-2 gap-3 border-t border-gray-100 bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
+        <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={currentStepIndex === 0 ? handleCancel : goToPreviousStep}
-            className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
+            className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
           >
             {currentStepIndex === 0 ? "Cancel" : "Back"}
           </button>
@@ -697,7 +709,7 @@ function SpecificationsEditor({
                 onChange(rows.map((item) => (item.id === row.id ? { ...item, key: event.target.value } : item)))
               }
               placeholder="e.g. Color"
-              className="h-11 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+              className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
             <input
               aria-label="Specification value"
@@ -706,7 +718,7 @@ function SpecificationsEditor({
                 onChange(rows.map((item) => (item.id === row.id ? { ...item, value: event.target.value } : item)))
               }
               placeholder="e.g. Red"
-              className="h-11 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+              className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
             <button
               type="button"
@@ -745,7 +757,7 @@ function TextField({
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
       />
       {error && <p className="mt-1 text-[11px] font-semibold text-red-500">{error}</p>}
     </div>
@@ -772,7 +784,7 @@ function TextAreaField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={3}
-        className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+        className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
       />
     </div>
   );
@@ -801,7 +813,7 @@ function NumberField({
         min="0"
         value={value ?? ""}
         onChange={(event) => onChange(numberOrNull(event.target.value))}
-        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
       />
       {error && <p className="mt-1 text-[11px] font-semibold text-red-500">{error}</p>}
     </div>
@@ -847,16 +859,16 @@ function QuantityField({
           value={value ?? ""}
           disabled={disabled}
           onChange={(event) => onValueChange(numberOrNull(event.target.value))}
-          className="h-12 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20 disabled:bg-gray-100 disabled:text-gray-400"
+          className="h-12 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-400"
         />
         {units.length === 2 ? (
-          <div className={`flex h-12 w-[110px] shrink-0 items-center rounded-xl border border-gray-200 bg-gray-50 p-1 ${disabled ? 'opacity-60' : ''}`}>
+          <div className={`flex h-12 w-[110px] shrink-0 items-center rounded-xl border border-gray-200 bg-white p-1 ${disabled ? 'opacity-60' : ''}`}>
             {units.map((nextUnit) => (
               <button
                 key={nextUnit}
                 type="button"
                 disabled={disabled}
-                onClick={() => onUnitChange(nextUnit as any)}
+                onClick={() => onUnitChange(nextUnit as ProductFormValues["base_quantity_unit"])}
                 className={`flex h-full flex-1 items-center justify-center rounded-lg text-[11px] font-bold uppercase transition-all ${unit === nextUnit
                     ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-200"
                     : "text-gray-500 hover:text-gray-700"
@@ -871,7 +883,7 @@ function QuantityField({
             value={unit}
             disabled={disabled}
             onChange={(event) => onUnitChange(event.target.value as ProductFormValues["base_quantity_unit"])}
-            className="h-12 w-[110px] shrink-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20 disabled:bg-gray-100 disabled:text-gray-400"
+            className="h-12 w-[110px] shrink-0 rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-400"
           >
             {units.map((nextUnit) => (
               <option key={nextUnit} value={nextUnit}>
@@ -896,7 +908,7 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition-colors active:bg-gray-100/50">
+    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors active:border-gray-300">
       <span className="block text-[14px] font-bold text-gray-900">{label}</span>
       <div
         className={`relative flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 ease-in-out ${checked ? 'bg-primary' : 'bg-gray-300'
