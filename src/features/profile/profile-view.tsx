@@ -78,7 +78,7 @@ function ProfileContent() {
   const initial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[640px] bg-[#f4f7f8] text-gray-900">
+    <main className="mx-auto h-dvh w-full max-w-[640px] overflow-y-auto overscroll-none bg-[#f4f7f8] text-gray-900">
       <header className="sticky top-0 z-20 bg-white/95 px-3 py-3 backdrop-blur shadow-sm">
         <div className="flex items-center gap-3">
           <button
