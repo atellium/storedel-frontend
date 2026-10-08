@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
 				pathname: "/media/product_categories/**",
 				search: "",
 			},
+			{
+				protocol: "https",
+				hostname: "placehold.co",
+				port: "",
+				pathname: "/**",
+			},
 		],
 	},
 };

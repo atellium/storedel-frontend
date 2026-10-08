@@ -12,8 +12,8 @@ const navItems = [
   {
     label: "Home",
     icon: "fa-house",
-    href: () => "/",
-    isActive: (pathname: string) => pathname === "/",
+    href: () => "/stores",
+    isActive: (pathname: string) => pathname === "/stores",
   },
   {
     label: "Store",
