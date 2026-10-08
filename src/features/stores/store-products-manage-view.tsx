@@ -8,7 +8,8 @@ import { AuthGuard } from "@/features/auth/auth-guard";
 import { getMyStoreBySlug, getMyStoreProducts } from "./stores-service";
 import type { StoreCategory, StoreProduct, StoreProductsResponse } from "./types";
 
-const PRODUCTS_PAGE_SIZE = 3;
+const PRODUCTS_PAGE_SIZE = 10;
+const PRODUCT_SEARCH_DEBOUNCE_MS = 500;
 
 export function StoreProductsManageView({ storeSlug }: { storeSlug: string }) {
   return (
@@ -24,18 +25,29 @@ function StoreProductsManageContent({ storeSlug }: { storeSlug: string }) {
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [category, setCategory] = useState("");
   const [customQuantityOnly, setCustomQuantityOnly] = useState(false);
+  const [featuredOnly, setFeaturedOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<"loading" | "idle" | "error">("loading");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, PRODUCT_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     let isMounted = true;
 
     getMyStoreProducts(storeSlug, page, {
       category,
+      isFeatured: featuredOnly,
       isCustomQuantity: customQuantityOnly,
       pageSize: PRODUCTS_PAGE_SIZE,
-      search: search.trim(),
+      search: debouncedSearch,
     })
       .then((nextData) => {
         if (!isMounted) return;
@@ -50,7 +62,7 @@ function StoreProductsManageContent({ storeSlug }: { storeSlug: string }) {
     return () => {
       isMounted = false;
     };
-  }, [category, customQuantityOnly, page, search, storeSlug]);
+  }, [category, customQuantityOnly, debouncedSearch, featuredOnly, page, storeSlug]);
 
   useEffect(() => {
     let isMounted = true;
@@ -87,6 +99,12 @@ function StoreProductsManageContent({ storeSlug }: { storeSlug: string }) {
 
   const handleCustomQuantityChange = (enabled: boolean) => {
     setCustomQuantityOnly(enabled);
+    setPage(1);
+    setStatus("loading");
+  };
+
+  const handleFeaturedChange = (enabled: boolean) => {
+    setFeaturedOnly(enabled);
     setPage(1);
     setStatus("loading");
   };
@@ -150,64 +168,22 @@ function StoreProductsManageContent({ storeSlug }: { storeSlug: string }) {
         </div>
 
         <div className="mb-4">
-          <h3 className="mb-2 pl-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-            Filter
-          </h3>
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            <label className="min-w-[220px] shrink-0">
-              <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                By category
-              </span>
-              <div className="flex gap-2">
-                <select
-                  value={category}
-                  onChange={(event) => handleCategoryChange(event.target.value)}
-                  className="h-11 min-w-0 flex-1 rounded-2xl border border-gray-100 bg-white px-3 text-sm font-semibold text-gray-900 outline-none focus:border-primary"
-                >
-                  <option value="">All categories</option>
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.slug}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                {category && (
-                  <button
-                    type="button"
-                    onClick={() => handleCategoryChange("")}
-                    aria-label="Clear category filter"
-                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white text-gray-500 transition active:scale-95"
-                  >
-                    <i className="fa-solid fa-xmark text-sm" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            </label>
-
-            <div className="flex min-w-[220px] shrink-0 items-end gap-2">
-              <button
-                type="button"
-                onClick={() => handleCustomQuantityChange(!customQuantityOnly)}
-                aria-pressed={customQuantityOnly}
-                className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-2xl border px-3 text-xs font-extrabold uppercase transition active:scale-95 ${
-                  customQuantityOnly
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-100 bg-white text-gray-700"
-                }`}
-              >
-                Custom quantity enabled
-              </button>
-              {customQuantityOnly && (
-                <button
-                  type="button"
-                  onClick={() => handleCustomQuantityChange(false)}
-                  aria-label="Clear custom quantity filter"
-                  className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white text-gray-500 transition active:scale-95"
-                >
-                  <i className="fa-solid fa-xmark text-sm" aria-hidden="true" />
-                </button>
-              )}
-            </div>
+            <CategoryFilterSelect
+              categories={categories}
+              value={category}
+              onChange={handleCategoryChange}
+            />
+            <FilterChip
+              active={featuredOnly}
+              label="Featured"
+              onClick={() => handleFeaturedChange(!featuredOnly)}
+            />
+            <FilterChip
+              active={customQuantityOnly}
+              label="Custom quantity"
+              onClick={() => handleCustomQuantityChange(!customQuantityOnly)}
+            />
           </div>
         </div>
 
@@ -314,7 +290,7 @@ function ManagedProductRow({
               alt={image.title || product.name}
               fill
               sizes="84px"
-              className="rounded-[14px] object-cover"
+              className="rounded-[14px] object-contain p-1"
             />
           ) : (
             <i className="fa-solid fa-box-open text-2xl text-gray-200" aria-hidden="true" />
@@ -388,6 +364,81 @@ function ManagedProductRow({
         </div>
       )}
     </article>
+  );
+}
+
+function FilterChip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] font-semibold transition active:scale-95 ${
+        active
+          ? "-order-1 border-primary bg-primary text-white shadow-sm"
+          : "border-gray-100 bg-white text-gray-700"
+      }`}
+    >
+      <span>{label}</span>
+      {active && (
+        <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/20 text-white">
+          <i className="fa-solid fa-xmark text-[9px]" aria-hidden="true" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function CategoryFilterSelect({
+  categories,
+  onChange,
+  value,
+}: {
+  categories: StoreCategory[];
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const activeCategory = categories.find((category) => category.slug === value);
+
+  return (
+    <div className={`relative inline-flex h-9 shrink-0 items-center rounded-xl border bg-white transition ${value
+        ? "-order-1 border-primary pr-8 text-primary ring-1 ring-primary/10"
+        : "border-gray-100 text-gray-700"
+      }`}
+    >
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="Category filter"
+        className="h-full max-w-[180px] appearance-none rounded-xl bg-transparent py-0 pl-3 pr-7 text-[11px] font-semibold outline-none"
+      >
+        <option value="">All categories</option>
+        {categories.map((category) => (
+          <option key={category.id} value={category.slug}>
+            {category.name}
+          </option>
+        ))}
+      </select>
+      <i className="fa-solid fa-chevron-down pointer-events-none absolute right-3 text-[9px] text-current opacity-60" />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label={`Clear ${activeCategory?.name ?? "category"} filter`}
+          className="absolute right-2 inline-flex size-4 items-center justify-center rounded-full bg-primary text-white"
+        >
+          <i className="fa-solid fa-xmark text-[8px]" aria-hidden="true" />
+        </button>
+      )}
+    </div>
   );
 }
 

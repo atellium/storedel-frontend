@@ -52,22 +52,24 @@ export function PwaInstallPrompt() {
   if (!isVisible) return null;
 
   return (
-    <div className="sticky top-0 z-[60] border-b border-border bg-white px-3 py-2 text-main shadow-sm">
+    <div className="sticky top-0 z-[60] bg-sky-100 px-3 py-2.5 text-slate-950">
       <div className="mx-auto flex w-full max-w-[640px] items-center gap-3">
-        <Image
-          src="/icons/app-icon.png"
-          alt=""
-          width={40}
-          height={40}
-          className="size-10 shrink-0 rounded-xl"
-        />
-        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-main">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white">
+          <Image
+            src="/icons/app-icon.png"
+            alt=""
+            width={40}
+            height={40}
+            className="size-10 rounded-xl"
+          />
+        </span>
+        <p className="min-w-0 flex-1 text-base font-semibold leading-snug text-slate-950">
           For a better experience use our app.
         </p>
         <button
           type="button"
           onClick={handleInstall}
-          className="h-9 shrink-0 rounded-lg bg-primary px-4 text-sm font-bold text-white"
+          className="h-10 shrink-0 rounded-lg bg-black px-4 text-base font-bold text-white"
         >
           Use app
         </button>

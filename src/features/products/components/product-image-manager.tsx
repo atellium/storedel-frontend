@@ -137,7 +137,7 @@ async function compressImageToWebp(file: File) {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Image conversion failed."))),
       "image/webp",
-      0.82,
+      0.92,
     );
   });
 }

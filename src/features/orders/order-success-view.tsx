@@ -135,11 +135,6 @@ function OrderSuccessContent({
       </header>
 
       <section className="flex min-h-[calc(100dvh-64px)] flex-col px-4 pb-8 pt-0 text-center">
-        {/* Ad Placeholder Space */}
-        <div className="mb-5 flex min-h-[80px] w-full items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Advertisement Space
-        </div>
-
         <div className="flex flex-1 flex-col items-center">
           {/* Simple Product Icon with Checkmark */}
           <div className="relative flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-500 shadow-[0_0_24px_rgba(16,185,129,0.15)]">

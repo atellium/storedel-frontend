@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { BottomSheetModal } from "@/components/modals";
 import {
+  createProductVariant,
+  deleteProductVariant,
+  updateProductVariant,
+} from "../product-service";
+import {
   createVariantDraftKey,
   formatVolume,
   formatWeight,
   getDefaultVariantUnit,
+  normalizeVariantForApi,
 } from "../lib/measurement";
 import type {
   MeasurementType,
@@ -26,7 +32,8 @@ type ProductVariantEditorProps = {
   enableBundleCreation?: boolean;
   error?: string;
   openFirstWhenEmpty?: boolean;
-  removeSavedLabel?: string;
+  productId?: string;
+  storeSlug?: string;
   title?: string;
 };
 
@@ -55,7 +62,8 @@ export function ProductVariantEditor({
   measurementType,
   onChange,
   openFirstWhenEmpty = false,
-  removeSavedLabel = "Mark inactive",
+  productId,
+  storeSlug,
   title = "Variants",
   variants,
 }: ProductVariantEditorProps) {
@@ -66,42 +74,93 @@ export function ProductVariantEditor({
   );
   const [editing, setEditing] = useState<ProductVariantDraft | null>(null);
   const [editingBundle, setEditingBundle] = useState<ProductVariantDraft | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingVariant, setDeletingVariant] = useState<ProductVariantDraft | null>(null);
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingVariantKey, setSavingVariantKey] = useState<string | null>(null);
 
-  const handleSave = (variant: ProductVariantDraft) => {
-    const existing = variants.some((item) => item.client_id === variant.client_id);
-    const nextVariants = existing
-      ? variants.map((item) => (item.client_id === variant.client_id ? variant : item))
-      : [...variants, variant];
+  const handleSave = async (variant: ProductVariantDraft) => {
+    if (savingVariantKey) return;
 
-    onChange(normalizeDefault(nextVariants));
-    setInlineDraft(null);
-    setEditing(null);
-    setEditingBundle(null);
+    setSaveError(null);
+    setSavingVariantKey(variant.client_id);
+
+    try {
+      const savedVariant =
+        storeSlug && productId
+          ? variant.id
+            ? await updateProductVariant(
+                storeSlug,
+                productId,
+                variant.id,
+                normalizeVariantForApi(variant, measurementType),
+              )
+            : await createProductVariant(
+                storeSlug,
+                productId,
+                normalizeVariantForApi(variant, measurementType),
+              )
+          : null;
+      const nextVariant = savedVariant
+        ? variantDraftFromProduct(savedVariant, variant.sort_order)
+        : variant;
+      const variantClientId = savedVariant ? variant.client_id : nextVariant.client_id;
+      const normalizedVariant = savedVariant
+        ? { ...nextVariant, client_id: variantClientId }
+        : nextVariant;
+
+      const existing = variants.some((item) => item.client_id === variant.client_id);
+      const nextVariants = existing
+        ? variants.map((item) =>
+            item.client_id === variant.client_id ? normalizedVariant : item,
+          )
+        : [...variants, normalizedVariant];
+
+      onChange(normalizeDefault(nextVariants));
+      setInlineDraft(null);
+      setEditing(null);
+      setEditingBundle(null);
+    } catch {
+      setSaveError("Could not save this variant. Please try again.");
+    } finally {
+      setSavingVariantKey(null);
+    }
   };
 
   const handleCreateBundle = (baseVariant: ProductVariantDraft) => {
     setEditingBundle(createBundleVariant(baseVariant, variants.length));
   };
 
-  const handleRemove = (variant: ProductVariantDraft) => {
-    if (variant.id) {
-      onChange(
-        normalizeDefault(
-          variants.map((item) =>
-            item.client_id === variant.client_id
-              ? { ...item, is_active: false, is_default: false }
-              : item,
-          ),
-        ),
-      );
-      return;
-    }
-
+  const handleRemoveDraft = (variant: ProductVariantDraft) => {
     onChange(normalizeDefault(variants.filter((item) => item.client_id !== variant.client_id)));
   };
 
+  const handleDeleteVariant = async () => {
+    if (!deletingVariant?.id || !storeSlug || !productId || deleteStatus === "deleting") {
+      return;
+    }
+
+    setDeleteStatus("deleting");
+    setDeleteError(null);
+
+    try {
+      await deleteProductVariant(storeSlug, productId, deletingVariant.id);
+      onChange(
+        normalizeDefault(
+          variants.filter((item) => item.client_id !== deletingVariant.client_id),
+        ),
+      );
+      setDeletingVariant(null);
+    } catch {
+      setDeleteError("Could not delete this variant. Please try again.");
+    } finally {
+      setDeleteStatus("idle");
+    }
+  };
+
   return (
-    <section className="rounded-[20px] border border-gray-100 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+    <section className="rounded-[20px] border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-extrabold text-gray-900">{title}</h2>
@@ -123,9 +182,9 @@ export function ProductVariantEditor({
       </div>
 
       {inlineDraft ? (
-        <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
           <VariantForm
-            title={editTitle}
+            compact
             measurementType={measurementType}
             variant={inlineDraft}
             onCancel={() => setInlineDraft(null)}
@@ -135,7 +194,7 @@ export function ProductVariantEditor({
       ) : variants.length > 0 ? (
         <div className="mt-4 space-y-3">
           {variants.map((variant, index) => (
-            <article key={variant.client_id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+            <article key={variant.client_id} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-gray-900">
@@ -198,17 +257,25 @@ export function ProductVariantEditor({
                 )}
                 <button
                   type="button"
-                  onClick={() => handleRemove(variant)}
+                  onClick={() => {
+                    if (variant.id && storeSlug && productId) {
+                      setDeleteError(null);
+                      setDeletingVariant(variant);
+                      return;
+                    }
+
+                    handleRemoveDraft(variant);
+                  }}
                   className="text-[11px] font-bold text-red-500 transition hover:text-red-600"
                 >
-                  {variant.id ? removeSavedLabel : "Remove"}
+                  {variant.id ? "Delete" : "Remove"}
                 </button>
               </div>
             </article>
           ))}
         </div>
       ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-8 text-center">
+        <div className="mt-4 rounded-xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center">
           <p className="text-xs font-semibold text-gray-500">{emptyText}</p>
           <button
             type="button"
@@ -219,7 +286,11 @@ export function ProductVariantEditor({
           </button>
         </div>
       )}
-      {error && <p className="mt-2 text-[11px] font-semibold text-red-500">{error}</p>}
+      {(error || saveError) && (
+        <p className="mt-2 text-[11px] font-semibold text-red-500">
+          {saveError ?? error}
+        </p>
+      )}
 
       <BottomSheetModal
         open={Boolean(editing)}
@@ -230,7 +301,6 @@ export function ProductVariantEditor({
         {editing && (
           <VariantForm
             key={editing.client_id}
-            title={editTitle}
             measurementType={measurementType}
             variant={editing}
             onCancel={() => setEditing(null)}
@@ -254,45 +324,100 @@ export function ProductVariantEditor({
           />
         )}
       </BottomSheetModal>
+
+      <BottomSheetModal
+        open={Boolean(deletingVariant)}
+        onClose={() => {
+          if (deleteStatus === "idle") setDeletingVariant(null);
+        }}
+        title="Delete variant"
+        className="max-w-[640px]"
+        closeOnBackdropClick={deleteStatus === "idle"}
+      >
+        <div className="space-y-4 px-4 pb-6 pt-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-red-500">
+              Delete variant
+            </p>
+            <h2 className="mt-1 text-xl font-black text-gray-900">
+              Remove {deletingVariant ? getVariantLabel(deletingVariant, measurementType) : "variant"}?
+            </h2>
+            <p className="mt-2 text-sm font-medium leading-6 text-gray-500">
+              This will permanently delete the variant from this product.
+            </p>
+          </div>
+
+          {deleteError && (
+            <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-600">
+              {deleteError}
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setDeletingVariant(null)}
+              disabled={deleteStatus === "deleting"}
+              className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98] disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteVariant}
+              disabled={deleteStatus === "deleting"}
+              className="flex h-12 items-center justify-center rounded-xl bg-red-500 text-[13px] font-bold uppercase tracking-wider text-white shadow-sm transition active:scale-[0.98] disabled:opacity-70"
+            >
+              {deleteStatus === "deleting" ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </BottomSheetModal>
     </section>
   );
 }
 
 export function variantsFromProduct(variants: ProductVariant[]) {
   return normalizeDefault(
-    variants.map((variant, index) => {
-      const displayUnit = getDisplayUnit(variant.unit, variant.value);
-
-      return {
-        client_id: variant.id || createVariantDraftKey(),
-        id: variant.id,
-        value: getDisplayValue(variant.value, displayUnit),
-        display_unit: displayUnit,
-        unit: toVariantUnit(variant.unit),
-        pack_count: variant.pack_count,
-        price: variant.price,
-        mrp: variant.mrp,
-        cost_price: variant.cost_price ?? null,
-        is_default: variant.is_default,
-        is_active: variant.is_active,
-        sort_order: variant.sort_order ?? index,
-        display_measurement: variant.display_measurement,
-      };
-    }),
+    variants.map((variant, index) => variantDraftFromProduct(variant, index)),
   );
 }
 
+function variantDraftFromProduct(
+  variant: ProductVariant,
+  fallbackSortOrder: number,
+): ProductVariantDraft {
+  const displayUnit = getDisplayUnit(variant.unit, variant.value);
+
+  return {
+    client_id: variant.id || createVariantDraftKey(),
+    id: variant.id,
+    value: getDisplayValue(variant.value, displayUnit),
+    display_unit: displayUnit,
+    unit: toVariantUnit(variant.unit),
+    pack_count: variant.pack_count,
+    price: variant.price,
+    mrp: variant.mrp,
+    cost_price: variant.cost_price ?? null,
+    is_default: variant.is_default,
+    is_active: variant.is_active,
+    sort_order: variant.sort_order ?? fallbackSortOrder,
+    display_measurement: variant.display_measurement,
+    name: variant.name,
+  };
+}
+
 function VariantForm({
+  compact = false,
   measurementType,
   onCancel,
   onSave,
-  title,
   variant,
 }: {
+  compact?: boolean;
   measurementType: MeasurementType;
   onCancel: () => void;
   onSave: (variant: ProductVariantDraft) => void;
-  title: string;
   variant: ProductVariantDraft;
 }) {
   const [draft, setDraft] = useState(variant);
@@ -310,13 +435,13 @@ function VariantForm({
   };
 
   return (
-    <div className="space-y-4 px-4 pb-6 pt-2">
+    <div className={`space-y-4 ${compact ? "" : "px-4 pb-6 pt-2"}`}>
       {measurementType !== "none" && (
         <div>
           <label htmlFor="variant-value" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
             Quantity
           </label>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
             <input
               id="variant-value"
               type="number"
@@ -325,15 +450,17 @@ function VariantForm({
               onChange={(event) =>
                 setDraft({ ...draft, value: numberOrNull(event.target.value) })
               }
-              className="h-12 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+              className="h-12 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
             {measurementType === "weight" || measurementType === "volume" ? (
-              <div className="flex h-12 w-[110px] shrink-0 items-center rounded-xl border border-gray-200 bg-gray-50 p-1">
+              <div className="flex h-12 min-w-0 items-center rounded-xl border border-gray-200 bg-white p-1">
                 {(measurementType === "weight" ? ["g", "kg"] : ["ml", "L"]).map((u) => (
                   <button
                     key={u}
                     type="button"
-                    onClick={() => setDraft({ ...draft, display_unit: u as any })}
+                    onClick={() =>
+                      setDraft({ ...draft, display_unit: u as ProductVariantDraft["display_unit"] })
+                    }
                     className={`flex h-full flex-1 items-center justify-center rounded-lg text-[11px] font-bold uppercase transition-all ${draft.display_unit === u
                         ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-200/50"
                         : "text-gray-500 hover:text-gray-700"
@@ -349,7 +476,7 @@ function VariantForm({
                 onChange={(event) =>
                   setDraft({ ...draft, unit: event.target.value as VariantUnit })
                 }
-                className="h-12 w-[110px] shrink-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+                className="h-12 min-w-0 rounded-xl border border-gray-200 bg-white px-2 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               >
                 {units.map((unit) => (
                   <option key={unit} value={unit}>
@@ -406,7 +533,7 @@ function VariantForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
+          className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
         >
           Cancel
         </button>
@@ -459,11 +586,40 @@ function BundleForm({
 
   return (
     <div className="space-y-4 px-4 pb-6 pt-2">
-      <NumberField
-        label="Pack count"
-        value={draft.pack_count}
-        onChange={(value) => updatePackCount(value ?? 1)}
-      />
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
+          Bundle/Pack
+        </p>
+        <h2 className="mt-1 text-xl font-black text-gray-900">Create Bundle</h2>
+      </div>
+
+      <div>
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+          Pack count
+        </span>
+        <div className="flex h-12 items-center justify-between rounded-xl border border-gray-200 bg-white px-2">
+          <button
+            type="button"
+            onClick={() => updatePackCount(Math.max(2, draft.pack_count - 1))}
+            disabled={draft.pack_count <= 2}
+            aria-label="Decrease pack count"
+            className="inline-flex size-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+          >
+            <i className="fa-solid fa-minus text-[11px]" aria-hidden="true" />
+          </button>
+          <span className="min-w-12 text-center text-base font-extrabold text-gray-900">
+            {draft.pack_count}
+          </span>
+          <button
+            type="button"
+            onClick={() => updatePackCount(draft.pack_count + 1)}
+            aria-label="Increase pack count"
+            className="inline-flex size-9 items-center justify-center rounded-lg bg-primary text-white transition active:scale-95"
+          >
+            <i className="fa-solid fa-plus text-[11px]" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
       <NumberField
         label="Selling price (₹)"
         value={draft.price}
@@ -485,7 +641,7 @@ function BundleForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
+          className="flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white text-[13px] font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
         >
           Cancel
         </button>
@@ -593,6 +749,7 @@ function validateBundle(variant: ProductVariantDraft) {
 }
 
 function getVariantLabel(variant: ProductVariantDraft, measurementType: MeasurementType) {
+  if (variant.name) return variant.name;
   if (variant.display_measurement) return variant.display_measurement;
   if (measurementType === "none") return variant.unit ?? "pack";
   if (measurementType === "weight" && variant.value !== null) {
@@ -678,7 +835,7 @@ function NumberField({
         min="0"
         value={value ?? ""}
         onChange={(event) => onChange(numberOrNull(event.target.value))}
-        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
       />
     </div>
   );
@@ -705,7 +862,7 @@ function SelectField({
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value as VariantUnit)}
-        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -727,7 +884,7 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition-colors active:bg-gray-100/50">
+    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors active:border-gray-300">
       <span className="block text-[14px] font-bold text-gray-900">{label}</span>
       <div
         className={`relative flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 ease-in-out ${checked ? 'bg-primary' : 'bg-gray-300'

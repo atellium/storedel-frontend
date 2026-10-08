@@ -52,6 +52,19 @@ export async function createProductVariants(
   return response.data.results;
 }
 
+export async function createProductVariant(
+  storeSlug: string,
+  productId: string,
+  payload: ProductVariantInput,
+) {
+  const response = await privateApiClient.post<VariantResponse | BulkVariantResponse>(
+    `/api/stores/my/${storeSlug}/products/${productId}/variants/`,
+    payload,
+  );
+
+  return unwrapVariantOrBulkResponse(response.data);
+}
+
 export async function updateProductVariants(
   storeSlug: string,
   productId: string,
@@ -79,6 +92,16 @@ export async function updateProductVariant(
   return unwrapVariantResponse(response.data);
 }
 
+export async function deleteProductVariant(
+  storeSlug: string,
+  productId: string,
+  variantId: string,
+) {
+  await privateApiClient.delete(
+    `/api/stores/my/${storeSlug}/products/${productId}/variants/${variantId}/`,
+  );
+}
+
 function unwrapProductResponse(response: ProductResponse): StoreProduct {
   if ("result" in response && response.result) return response.result;
   if ("product" in response && response.product) return response.product;
@@ -91,4 +114,9 @@ function unwrapVariantResponse(response: VariantResponse): ProductVariant {
   if ("variant" in response && response.variant) return response.variant;
   if ("data" in response && response.data) return response.data;
   return response as ProductVariant;
+}
+
+function unwrapVariantOrBulkResponse(response: VariantResponse | BulkVariantResponse) {
+  if ("results" in response) return response.results[0];
+  return unwrapVariantResponse(response);
 }

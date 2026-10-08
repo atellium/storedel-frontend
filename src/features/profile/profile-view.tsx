@@ -59,10 +59,26 @@ function ProfileContent() {
     });
   };
 
+  const handleShareApp = async () => {
+    const appUrl = `${window.location.origin}/stores`;
+    const shareText = `Shop from nearby local stores with Storedel. ${appUrl}`;
+    const shareData = {
+      title: "Storedel",
+      text: shareText,
+    };
+
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    await navigator.clipboard?.writeText(shareText);
+  };
+
   const initial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[640px] bg-[#f4f7f8] text-gray-900 pb-16">
+    <main className="mx-auto h-dvh w-full max-w-[640px] overflow-y-auto overscroll-none bg-[#f4f7f8] text-gray-900">
       <header className="sticky top-0 z-20 bg-white/95 px-3 py-3 backdrop-blur shadow-sm">
         <div className="flex items-center gap-3">
           <button
@@ -97,9 +113,6 @@ function ProfileContent() {
               </p>
             </div>
           </div>
-          <button className="flex h-8 items-center justify-center rounded-lg bg-gray-50 px-3 text-[11px] font-bold uppercase tracking-wider text-primary transition hover:bg-gray-100 active:scale-95">
-            Edit
-          </button>
         </div>
 
         {/* My Stores Section */}
@@ -122,9 +135,11 @@ function ProfileContent() {
             More Options
           </h2>
           <div className="overflow-hidden rounded-[20px] border border-gray-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
-            <StaticLink icon="fa-circle-question" label="Help & Support" href="/help" />
-            <StaticLink icon="fa-comment-dots" label="Feedback" href="/feedback" />
-            <StaticLink icon="fa-share-nodes" label="Share App" href="/share" />
+            <StaticButton
+              icon="fa-share-nodes"
+              label="Share App"
+              onClick={handleShareApp}
+            />
             <StaticLink icon="fa-shield-halved" label="Privacy Policy" href="/privacy" />
             <StaticLink icon="fa-file-lines" label="Terms of Use" href="/terms" />
 
@@ -213,5 +228,31 @@ function StaticLink({ href, icon, label }: { href: string; icon: string; label: 
       </div>
       <i className="fa-solid fa-chevron-right text-[10px] text-gray-300" aria-hidden="true" />
     </Link>
+  );
+}
+
+function StaticButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between border-b border-gray-100 p-4 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 last:border-none"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex size-8 items-center justify-center rounded-full bg-gray-50 text-gray-500">
+          <i className={`fa-solid ${icon} text-sm`} aria-hidden="true" />
+        </div>
+        <span className="text-[13px] font-bold text-gray-900">{label}</span>
+      </div>
+      <i className="fa-solid fa-chevron-right text-[10px] text-gray-300" aria-hidden="true" />
+    </button>
   );
 }

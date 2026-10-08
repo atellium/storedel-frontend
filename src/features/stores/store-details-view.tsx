@@ -780,9 +780,6 @@ function BusinessInfoCard({
           </Link>
         </div> */}
       </section>
-      <p className="mb-4 mt-12 text-left text-[30px] font-extrabold leading-tight text-gray-300/50">
-        Your Local Store, <br />Now Online
-      </p>
     </>
   );
 }
@@ -997,7 +994,7 @@ function ProductCard({
           alt={productImage?.title || product.name}
           fill
           sizes="(max-width: 640px) 42vw, 220px"
-          className="rounded-[14px] object-cover"
+          className="rounded-[14px] object-contain p-1"
         />
       </Link>
 
