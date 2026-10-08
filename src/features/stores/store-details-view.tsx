@@ -780,9 +780,6 @@ function BusinessInfoCard({
           </Link>
         </div> */}
       </section>
-      <p className="mb-4 mt-12 text-left text-[30px] font-extrabold leading-tight text-gray-300/50">
-        Your Local Store, <br />Now Online
-      </p>
     </>
   );
 }

@@ -166,7 +166,7 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
           </div>
 
           <div className="space-y-4">
-            <div className="relative flex h-[52px] w-full items-center rounded-[20px] border border-gray-200 bg-gray-50/50 px-3 transition-all focus-within:border-primary/50 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary/20">
+            <div className="relative flex h-15 w-full items-center rounded-[16px] border border-gray-200 bg-gray-50 px-3 transition-all focus-within:border-primary/50 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary/20">
               <i className="fa-solid fa-magnifying-glass mr-3 text-[14px] text-gray-400" aria-hidden="true" />
               <input
                 type="search"
@@ -183,7 +183,7 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
 
             {!hasSearchQuery && (
               <>
-                <Divider />
+                {/* <Divider /> */}
 
                 <button
                   type="button"
@@ -203,7 +203,7 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
                   </div>
                 </button>
 
-                <Divider />
+                {/* <Divider /> */}
 
                 <button
                   type="button"
@@ -216,7 +216,7 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
                   <div className="min-w-0 flex-1 text-left">
                     <h3 className="text-[14px] font-extrabold text-gray-900">Open Store Link</h3>
                     <p className="mt-0.5 text-[11px] font-medium leading-snug text-gray-500">
-                      Paste a link shared via WhatsApp or social media.
+                      Opan a link shared by the store.
                     </p>
                   </div>
                   <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-400">
@@ -257,6 +257,12 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
               </>
             )}
           </div>
+        </section>
+
+        <section className="pt-3">
+          <p className="text-left text-[30px] font-extrabold leading-tight text-gray-300/70">
+            Your Local Store, <br />Now Online
+          </p>
         </section>
       </div>
     </main>
@@ -306,7 +312,6 @@ function SavedStoresSection({
 
 function StoreCard({ store }: { store: Store }) {
   const address = [store.locality, store.city.name].filter(Boolean).join(", ");
-  const fulfillmentOptions = getFulfillmentOptions(store);
   const isOpen = store.is_active;
 
   return (
@@ -363,16 +368,6 @@ function StoreCard({ store }: { store: Store }) {
         </div>
       </div>
 
-      {fulfillmentOptions.length > 0 && (
-        <p className="mt-2 flex flex-wrap items-center justify-center text-center text-[11px] font-semibold">
-          {fulfillmentOptions.map((option, index) => (
-            <span key={option.label} className="inline-flex items-center">
-              {index > 0 && <span className="mx-1.5 text-gray-300">&bull;</span>}
-              <span className={option.className}>{option.label}</span>
-            </span>
-          ))}
-        </p>
-      )}
     </Link>
   );
 }
@@ -395,11 +390,6 @@ function SavedStoreSkeletonList() {
               </div>
               <div className="mt-2 h-2.5 w-24 animate-pulse rounded bg-gray-100" />
 
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <div className="h-4 w-16 animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-20 animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-24 animate-pulse rounded bg-gray-100" />
-              </div>
             </div>
           </div>
 
@@ -407,8 +397,6 @@ function SavedStoreSkeletonList() {
             <div className="h-3 w-32 animate-pulse rounded bg-gray-100" />
             <div className="h-9 w-24 shrink-0 animate-pulse rounded-[10px] bg-gray-100" />
           </div>
-
-          <div className="mx-auto mt-3 h-3 w-48 animate-pulse rounded bg-gray-100" />
         </div>
       ))}
     </div>
@@ -556,24 +544,6 @@ function Divider() {
       <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Or</span>
       <div className="h-px flex-1 bg-gray-100" />
     </div>
-  );
-}
-
-function getFulfillmentOptions(store: Store) {
-  const deliveryStatus = store.delivery_status;
-
-  return [
-    deliveryStatus?.pickup?.is_enabled
-      ? { label: "Pickup", className: "text-purple-700" }
-      : null,
-    deliveryStatus?.express_delivery?.is_enabled
-      ? { label: "Express Delivery", className: "text-orange-700" }
-      : null,
-    deliveryStatus?.scheduled_delivery?.is_enabled
-      ? { label: "Scheduled Delivery", className: "text-blue-700" }
-      : null,
-  ].filter(
-    (option): option is { label: string; className: string } => Boolean(option),
   );
 }
 
