@@ -12,22 +12,26 @@ type StoreHostResponse = {
 };
 
 export async function proxy(request: NextRequest) {
-  const hostName = getLocalhostBusinessHostName(
+  const businessHost = getBusinessHost(
     request.headers.get("host") ?? request.nextUrl.host,
   );
 
-  if (!hostName || !API_BASE_URL) {
+  if (!businessHost.hostName || !API_BASE_URL) {
     return NextResponse.next();
   }
 
-  const storeSlug = await getStoreSlugByHostName(hostName);
+  const storeSlug = await getStoreSlugByHostName(businessHost.hostName);
 
   if (!storeSlug || request.nextUrl.pathname.startsWith(`/${storeSlug}`)) {
     return NextResponse.next();
   }
 
   const redirectUrl = request.nextUrl.clone();
-  redirectUrl.hostname = "localhost";
+  if (businessHost.isLocalhost) {
+    redirectUrl.hostname = "localhost";
+  } else {
+    redirectUrl.hostname = "storedel.com";
+  }
   redirectUrl.pathname =
     request.nextUrl.pathname === "/"
       ? `/${storeSlug}`
@@ -58,13 +62,29 @@ async function getStoreSlugByHostName(hostName: string) {
   }
 }
 
-function getLocalhostBusinessHostName(host: string) {
+function getBusinessHost(host: string) {
   const hostname = host.split(":")[0] ?? "";
-  const suffix = ".localhost";
+  const localhostSuffix = ".localhost";
+  const storeDomainSuffix = ".shop.storedel.com";
 
-  if (!hostname.endsWith(suffix)) return "";
+  if (hostname.endsWith(localhostSuffix)) {
+    return {
+      hostName: hostname.slice(0, -localhostSuffix.length),
+      isLocalhost: true,
+    };
+  }
 
-  return hostname.slice(0, -suffix.length);
+  if (hostname.endsWith(storeDomainSuffix)) {
+    return {
+      hostName: hostname.slice(0, -storeDomainSuffix.length).split(".")[0] ?? "",
+      isLocalhost: false,
+    };
+  }
+
+  return {
+    hostName: "",
+    isLocalhost: false,
+  };
 }
 
 function allowInsecureLocalApiFetch(url: URL) {
