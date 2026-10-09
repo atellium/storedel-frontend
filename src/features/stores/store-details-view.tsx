@@ -413,7 +413,7 @@ function StoreCoverImage({
           fill
           priority
           sizes="640px"
-          className="object-cover object-center"
+          className="object-cover object-top"
         />
       ) : (
         <div className="flex h-full items-center justify-center bg-gray-100 text-6xl text-gray-300">

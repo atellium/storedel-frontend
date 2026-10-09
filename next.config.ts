@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
 			},
 			{
 				protocol: "https",
+				hostname: "media.storedel.com",
+				port: "",
+				pathname: "/**",
+				search: "",
+			},
+			{
+				protocol: "https",
 				hostname: "placehold.co",
 				port: "",
 				pathname: "/**",
