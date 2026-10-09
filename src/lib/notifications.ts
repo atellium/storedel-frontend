@@ -144,7 +144,7 @@ async function showForegroundNotification(payload: MessagePayload) {
         payload.notification?.body ||
         payload.data?.body ||
         "You have a new notification.";
-    const url = payload.data?.url || "/";
+    const url = getNotificationUrl(payload.data?.url);
 
     try {
         const registration = await navigator.serviceWorker.ready;
@@ -159,7 +159,7 @@ async function showForegroundNotification(payload: MessagePayload) {
             },
         });
     } catch {
-        new Notification(title, {
+        const notification = new Notification(title, {
             body,
             icon: payload.notification?.image || NOTIFICATION_ICON,
             data: {
@@ -167,6 +167,28 @@ async function showForegroundNotification(payload: MessagePayload) {
                 ...payload.data,
             },
         });
+
+        notification.onclick = () => {
+            window.focus();
+            window.location.assign(url);
+            notification.close();
+        };
+    }
+}
+
+function getNotificationUrl(value: string | undefined) {
+    if (!value) return "/";
+
+    try {
+        const url = new URL(value, window.location.origin);
+
+        if (url.origin !== window.location.origin) {
+            return "/";
+        }
+
+        return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+        return "/";
     }
 }
 
