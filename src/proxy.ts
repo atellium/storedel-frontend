@@ -29,6 +29,8 @@ export async function proxy(request: NextRequest) {
   const redirectUrl = request.nextUrl.clone();
   if (businessHost.isLocalhost) {
     redirectUrl.hostname = "localhost";
+  } else {
+    redirectUrl.hostname = "storedel.com";
   }
   redirectUrl.pathname =
     request.nextUrl.pathname === "/"
