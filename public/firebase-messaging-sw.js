@@ -30,7 +30,7 @@ messaging.onBackgroundMessage((payload) => {
         icon: "/icons/app-icon.png",
         badge: "/icons/sdl-notification-badge.png",
         data: {
-            url: data.url || "/",
+            url: getNotificationUrl(data.url),
             ...data,
         },
     });
@@ -39,7 +39,7 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener("notificationclick", (event) => {
     event.notification.close();
 
-    const url = event.notification.data?.url || "/";
+    const url = getNotificationUrl(event.notification.data?.url);
 
     event.waitUntil(
         self.clients
@@ -59,3 +59,19 @@ self.addEventListener("notificationclick", (event) => {
             })
     );
 });
+
+function getNotificationUrl(value) {
+    if (!value) return "/";
+
+    try {
+        const url = new URL(value, self.location.origin);
+
+        if (url.origin !== self.location.origin) {
+            return "/";
+        }
+
+        return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+        return "/";
+    }
+}
