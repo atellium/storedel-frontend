@@ -439,10 +439,12 @@ function OrderDetailsSheet({
         <h3 className="mb-4 text-[14px] font-extrabold text-gray-900">Bill Details</h3>
         <div className="space-y-3.5">
           <BillRow label="Item total" value={formatPrice(order.subtotal)} />
-          <BillRow
-            label="Delivery fee"
-            value={order.delivery_fee > 0 ? formatPrice(order.delivery_fee) : <span className="text-blue-600">Free</span>}
-          />
+          {order.fullfillment_type !== "pickup" && (
+            <BillRow
+              label="Delivery fee"
+              value={order.delivery_fee > 0 ? formatPrice(order.delivery_fee) : <span className="text-blue-600">Free</span>}
+            />
+          )}
           {order.discount_amount > 0 && (
             <BillRow
               label="Discount"
@@ -497,7 +499,7 @@ function OrderDetailsSheet({
                     Change to {formatFulfillmentType(option.type)}
                   </span>
                   <span className="shrink-0 rounded bg-gray-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-600 ring-1 ring-gray-200">
-                    {option.type === "pickup" ? "Free" : `+${formatPrice(deliveryFee)}`}
+                    {deliveryFee > 0 ? `+${formatPrice(deliveryFee)}` : "Free"}
                   </span>
                 </button>
               );
@@ -890,8 +892,14 @@ function getFulfillmentUpdateOptions(order: Order, settings: StoreSettings | nul
 
 function getDeliveryFeeForOrder(order: Order, settings: StoreSettings | null, type: OrderFulfillmentType) {
   if (!settings || type === "pickup") return 0;
-  if (type === "express_delivery") return settings.express_delivery_charge;
-  return settings.scheduled_delivery_charge;
+  if (type === "express_delivery") {
+    return order.subtotal < settings.express_min_order_amount
+      ? settings.express_delivery_charge
+      : 0;
+  }
+  return order.subtotal < settings.scheduled_min_order_amount
+    ? settings.scheduled_delivery_charge
+    : 0;
 }
 
 function getStatusColor(status: OrderStatus) {

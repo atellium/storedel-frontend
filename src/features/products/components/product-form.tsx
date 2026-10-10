@@ -301,11 +301,6 @@ function ProductFormContent({ mode, productId, storeSlug }: ProductFormProps) {
                 value={values.short_description}
                 onChange={(value) => setField("short_description", value)}
               />
-              <TextField
-                label="Brand"
-                value={values.brand}
-                onChange={(value) => setField("brand", value)}
-              />
               <ProductCategorySelector
                 value={values.category_ids}
                 onChange={(categoryIds) => setField("category_ids", categoryIds)}

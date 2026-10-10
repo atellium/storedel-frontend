@@ -38,6 +38,7 @@ type ProductVariantEditorProps = {
 };
 
 const packageUnits: VariantUnit[] = [
+  "piece",
   "pack",
   "box",
   "carton",
@@ -50,7 +51,7 @@ const packageUnits: VariantUnit[] = [
   "tube",
   "roll",
 ];
-const countUnits: VariantUnit[] = ["piece", ...packageUnits];
+const countUnits: VariantUnit[] = packageUnits;
 
 export function ProductVariantEditor({
   addLabel = "Add Variant",
@@ -79,6 +80,9 @@ export function ProductVariantEditor({
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savingVariantKey, setSavingVariantKey] = useState<string | null>(null);
+  const canAddVariant =
+    measurementType !== "none" ||
+    variants.filter((variant) => variant.is_active).length !== 1;
 
   const handleSave = async (variant: ProductVariantDraft) => {
     if (savingVariantKey) return;
@@ -170,7 +174,7 @@ export function ProductVariantEditor({
             </p>
           )}
         </div>
-        {variants.length > 0 && (
+        {variants.length > 0 && canAddVariant && (
           <button
             type="button"
             onClick={() => setEditing(createEmptyVariant(measurementType, variants.length))}

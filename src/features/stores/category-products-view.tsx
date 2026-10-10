@@ -222,12 +222,12 @@ export function CategoryProductsView({
                 <Link
                   key={category.id}
                   href={`/${store.slug}/products/${category.slug}`}
-                  className={`flex flex-col items-center justify-start border-r-[4px] px-1 py-3 text-center transition ${isActive
+                  className={`flex flex-col items-center justify-start border-r-[4px] px-1 py-2 text-center transition ${isActive
                     ? "border-primary bg-white font-bold text-gray-900"
                     : "border-transparent text-gray-500 hover:bg-gray-50"
                     }`}
                 >
-                  <div className="relative mb-2 size-10 shrink-0 overflow-hidden rounded-lg bg-[#f4f7f8]">
+                  <div className="relative w-16 h-14 shrink-0 overflow-hidden rounded-lg ">
                     <Image
                       src={category.image_url ?? DEFAULT_PRODUCT_IMAGE}
                       alt={category.image_url ? category.name : ""}
@@ -235,7 +235,7 @@ export function CategoryProductsView({
                       className="object-cover p-1"
                     />
                   </div>
-                  <span className={`line-clamp-2 text-[10px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+                  <span className={`line-clamp-2 text-[11px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
                     {category.name}
                   </span>
                 </Link>
@@ -421,6 +421,7 @@ function CategoryProductCard({
   const cartItem = hasOptions ? selectedOptionCartItem : variantCartItem;
   const pendingAddKey = defaultVariant?.id;
   const discountPercent = defaultVariant ? getDiscountPercent(defaultVariant) : 0;
+  const productImage = product.uploads?.[0];
 
   return (
     <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl bg-white p-2.5 shadow-sm ring-1 ring-gray-200">
@@ -435,12 +436,11 @@ function CategoryProductCard({
         className="relative block h-24 w-full bg-white"
       >
         <Image
-          src={DEFAULT_PRODUCT_IMAGE}
-          alt={product.name}
+          src={productImage?.url || DEFAULT_PRODUCT_IMAGE}
+          alt={productImage?.title || product.name}
           fill
           sizes="(max-width: 640px) 42vw, 220px"
           className="object-contain p-1"
-          priority={product.sort_order <= 2}
         />
       </Link>
 
