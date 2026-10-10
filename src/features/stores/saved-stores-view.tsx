@@ -84,10 +84,10 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
         <section>
           <div className="mb-3">
             <h2 className="text-lg font-black tracking-tight text-gray-900">
-              My Stores
+              Your Stores
             </h2>
             <p className="text-xs font-medium leading-relaxed text-gray-500">
-              Quickly access stores you&apos;ve saved or visited.
+              Stores you've saved or ordered from.
             </p>
           </div>
 
