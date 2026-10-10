@@ -71,6 +71,7 @@ export type StoreDetails = Store & {
   delivery_status?: StoreDeliveryStatus;
   categories: StoreCategory[];
   category_grid?: StoreCategoryGrid[];
+  featured_categories?: StoreCategory[];
   created_at: string;
 };
 

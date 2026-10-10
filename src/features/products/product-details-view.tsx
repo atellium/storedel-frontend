@@ -192,7 +192,7 @@ export function ProductDetailsView({
             fill
             priority
             sizes="(max-width: 640px) 100vw, 640px"
-            className="object-cover"
+            className="object-contain"
           />
           {discountPercent > 0 && (
             <span className="absolute left-3 top-3 rounded-full bg-blue-600 px-3 py-1 text-xs font-extrabold text-white shadow-sm">

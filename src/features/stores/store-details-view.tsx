@@ -24,7 +24,7 @@ import {
 import { useAppSelector } from "@/store/hooks";
 import type {
   StoreDayHours,
-  StoreCategoryGrid,
+  StoreCategory,
   StoreDeliveryStatus,
   StoreDetails,
   StoreProduct,
@@ -293,7 +293,7 @@ export function StoreDetailsView({
         title={store.title}
       />
 
-      <CategoryGrid categories={store.category_grid ?? []} storeSlug={store.slug} />
+      <CategoryGrid categories={store.featured_categories ?? []} storeSlug={store.slug} />
 
       <section className="mt-8 px-3">
         <div className="mb-4 flex items-center justify-between">
@@ -589,7 +589,7 @@ function StoreOverviewSection({
 
         {deliveryStatus?.pickup?.is_enabled && (
           <div className="flex shrink-0 cursor-pointer items-center gap-2.5 rounded-[14px] border border-gray-100 bg-gray-50/80 p-1.5 pr-4 transition active:scale-95">
-            <FulfillmentImageIcon src="/images/pickup.png" alt="Pickup" />
+            <FulfillmentIcon icon="fa-person-walking" />
             <div className="flex flex-col justify-center">
               <span className="block text-[11px] font-extrabold leading-tight text-gray-900">
                 Store Pickup
@@ -603,7 +603,7 @@ function StoreOverviewSection({
 
         {deliveryStatus?.express_delivery?.is_enabled && (
           <div className="flex shrink-0 cursor-pointer items-center gap-2.5 rounded-[14px] border border-gray-100 bg-gray-50/80 p-1.5 pr-4 transition active:scale-95">
-            <FulfillmentImageIcon src="/images/express-delivery.png" alt="Express delivery" />
+            <FulfillmentIcon icon="fa-motorcycle" />
             <div className="flex flex-col justify-center">
               <span className="block text-[11px] font-extrabold leading-tight text-gray-900">
                 Express Delivery
@@ -617,7 +617,7 @@ function StoreOverviewSection({
 
         {scheduledDelivery?.is_enabled && (
           <div className="flex shrink-0 cursor-pointer items-center gap-2.5 rounded-[14px] border border-gray-100 bg-gray-50/80 p-1.5 pr-4 transition active:scale-95">
-            <FulfillmentImageIcon src="/images/scheduled-delivery.png" alt="Scheduled delivery" />
+            <FulfillmentIcon icon="fa-calendar-check" />
             <div className="flex flex-col justify-center">
               <span className="block text-[11px] font-extrabold leading-tight text-gray-900">
                 Scheduled Delivery
@@ -652,16 +652,10 @@ function StoreOverviewSection({
   );
 }
 
-function FulfillmentImageIcon({ alt, src }: { alt: string; src: string }) {
+function FulfillmentIcon({ icon }: { icon: string }) {
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white shadow-sm">
-      <Image
-        src={src}
-        alt={alt}
-        width={24}
-        height={24}
-        className="size-6 object-contain"
-      />
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white text-primary shadow-sm">
+      <i className={`fa-solid ${icon} text-sm`} aria-hidden="true" />
     </span>
   );
 }
@@ -905,42 +899,38 @@ function CategoryGrid({
   categories,
   storeSlug,
 }: {
-  categories: StoreCategoryGrid[];
+  categories: StoreCategory[];
   storeSlug: string;
 }) {
   if (categories.length === 0) return null;
 
   return (
     <section className="mt-6 px-3">
-      {categories.map((category) => (
-        <div key={category.id} className="mb-6 last:mb-0">
-          <h2 className="mb-3 text-[18px] font-extrabold text-gray-900">
-            {category.name}
-          </h2>
-          <div className="grid grid-cols-4 gap-x-2 gap-y-3">
-            {category.children.map((child) => (
-              <Link
-                key={child.id}
-                href={`/${storeSlug}/products/${child.slug}`}
-                className="group flex flex-col items-center gap-1.5 transition active:scale-95"
-              >
-                <div className="relative aspect-square w-full overflow-hidden rounded-[18px] bg-gray-50 transition-colors group-hover:bg-gray-100/80">
-                  <Image
-                    src={child.image_url || DEFAULT_PRODUCT_IMAGE}
-                    alt={child.name}
-                    fill
-                    sizes="(max-width: 640px) 22vw, 140px"
-                    className="object-contain p-2.5 drop-shadow-sm"
-                  />
-                </div>
-                <span className="line-clamp-2 text-center text-[12px] font-semibold leading-tight text-gray-700">
-                  {child.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ))}
+      <h2 className="mb-3 text-[18px] font-extrabold text-gray-900">
+        Popular Categories
+      </h2>
+      <div className="grid grid-cols-4 gap-x-2 gap-y-3">
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            href={`/${storeSlug}/products/${category.slug}`}
+            className="group flex flex-col items-center gap-1.5 transition active:scale-95"
+          >
+            <div className="relative aspect-square w-full overflow-hidden rounded-[18px] bg-gray-50 transition-colors group-hover:bg-gray-100/80">
+              <Image
+                src={category.image_url || DEFAULT_PRODUCT_IMAGE}
+                alt={category.name}
+                fill
+                sizes="(max-width: 640px) 22vw, 140px"
+                className="object-contain p-2.5 drop-shadow-sm"
+              />
+            </div>
+            <span className="line-clamp-2 text-center text-[12px] font-semibold leading-tight text-gray-700">
+              {category.name}
+            </span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1396,16 +1386,6 @@ function getCartItemDisplayLabel(item: CartItem) {
   }
 
   return String(item.quantity);
-}
-
-function formatQuantity(value: number | null, unit?: string) {
-  if (!value) return "any amount";
-
-  if (unit === "g" && value >= 1000) {
-    return `${value / 1000} kg`;
-  }
-
-  return `${value} ${unit ?? ""}`.trim();
 }
 
 function getMeasurementUnit(
