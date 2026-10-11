@@ -27,6 +27,9 @@ const DAYS = [
   "sunday",
 ];
 
+const DELIVERY_RADIUS_OPTIONS = Array.from({ length: 20 }, (_, index) => index + 1);
+const TIME_OPTIONS = Array.from({ length: 36 }, (_, index) => (index + 1) * 5);
+
 const emptySettings: StoreSettingsPayload = {
   is_open: true,
   is_pickup_enabled: true,
@@ -190,14 +193,14 @@ function StorePickupDeliverySettingsContent({ storeSlug }: { storeSlug: string }
                       onChange={(value) => updateField("pickup_min_order_amount", value)}
                     />
                   </div>
-                  <NumberField
+                  <TimeSelect
                     label="Min prep (mins)"
                     value={form.pickup_min_preparation_minutes}
                     onChange={(value) =>
                       updateField("pickup_min_preparation_minutes", value)
                     }
                   />
-                  <NumberField
+                  <TimeSelect
                     label="Max prep (mins)"
                     value={form.pickup_max_preparation_minutes}
                     onChange={(value) =>
@@ -212,7 +215,7 @@ function StorePickupDeliverySettingsContent({ storeSlug }: { storeSlug: string }
             <section className="order-4 overflow-hidden rounded-[20px] border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
               <h3 className="mb-4 text-[15px] font-extrabold text-gray-900">Express Delivery</h3>
               <div className="grid grid-cols-2 gap-3">
-                <TextField
+                <RadiusSelect
                   label="Range (in km)"
                   value={form.express_delivery_range_km}
                   onChange={(value) =>
@@ -234,14 +237,14 @@ function StorePickupDeliverySettingsContent({ storeSlug }: { storeSlug: string }
                   }
                 />
                 <div className="hidden sm:block" /> {/* Spacer */}
-                <NumberField
+                <TimeSelect
                   label="Min time (mins)"
                   value={form.express_min_delivery_minutes}
                   onChange={(value) =>
                     updateField("express_min_delivery_minutes", value)
                   }
                 />
-                <NumberField
+                <TimeSelect
                   label="Max time (mins)"
                   value={form.express_max_delivery_minutes}
                   onChange={(value) =>
@@ -256,7 +259,7 @@ function StorePickupDeliverySettingsContent({ storeSlug }: { storeSlug: string }
             <section className="order-3 overflow-hidden rounded-[20px] border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
               <h3 className="mb-4 text-[15px] font-extrabold text-gray-900">Scheduled Delivery</h3>
               <div className="grid grid-cols-2 gap-3">
-                <TextField
+                <RadiusSelect
                   label="Range (in km)"
                   value={form.scheduled_delivery_range_km}
                   onChange={(value) =>
@@ -308,14 +311,14 @@ function StorePickupDeliverySettingsContent({ storeSlug }: { storeSlug: string }
                     onChange={(value) => updateField("pickup_min_order_amount", value)}
                   />
                 </div>
-                <NumberField
+                <TimeSelect
                   label="Min prep (mins)"
                   value={form.pickup_min_preparation_minutes}
                   onChange={(value) =>
                     updateField("pickup_min_preparation_minutes", value)
                   }
                 />
-                <NumberField
+                <TimeSelect
                   label="Max prep (mins)"
                   value={form.pickup_max_preparation_minutes}
                   onChange={(value) =>
@@ -341,7 +344,7 @@ function StorePickupDeliverySettingsContent({ storeSlug }: { storeSlug: string }
   );
 }
 
-function TextField({
+function RadiusSelect({
   label,
   onChange,
   value,
@@ -350,14 +353,64 @@ function TextField({
   onChange: (value: string) => void;
   value: string;
 }) {
+  const radiusValue = Math.round(Number(value));
+  const selectedValue =
+    Number.isFinite(radiusValue) &&
+    DELIVERY_RADIUS_OPTIONS.includes(radiusValue)
+      ? String(radiusValue)
+      : "";
+
   return (
     <label className="block">
       <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">{label}</span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
-      />
+      <div className="relative">
+        <select
+          required
+          value={selectedValue}
+          onChange={(event) => onChange(Number(event.target.value).toFixed(2))}
+          className="h-12 w-full appearance-none rounded-xl border border-gray-200 px-3 pr-9 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50"
+        >
+          <option value="">Select radius</option>
+          {DELIVERY_RADIUS_OPTIONS.map((radius) => (
+            <option key={radius} value={radius}>
+              {radius} km
+            </option>
+          ))}
+        </select>
+        <i className="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" />
+      </div>
+    </label>
+  );
+}
+
+function TimeSelect({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">{label}</span>
+      <div className="relative">
+        <select
+          required
+          value={value || ""}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="h-12 w-full appearance-none rounded-xl border border-gray-200 px-3 pr-9 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50"
+        >
+          <option value="">Select time</option>
+          {TIME_OPTIONS.map((minutes) => (
+            <option key={minutes} value={minutes}>
+              {formatMinutesOption(minutes)}
+            </option>
+          ))}
+        </select>
+        <i className="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" />
+      </div>
     </label>
   );
 }
@@ -377,9 +430,10 @@ function NumberField({
       <input
         type="number"
         min={0}
-        value={value}
+        required
+        value={value || ""}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50 focus:bg-white focus:ring-1 focus:ring-primary/20"
+        className="h-12 w-full rounded-xl border border-gray-200 px-3 text-sm font-bold text-gray-900 outline-none transition focus:border-primary/50"
       />
     </label>
   );
@@ -405,7 +459,7 @@ function ScheduledPauseCard({
   };
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4">
+    <div className="rounded-2xl border border-gray-200 p-4">
       <h4 className="text-[13px] font-bold text-gray-900">
         Pause Scheduled Delivery
       </h4>
@@ -419,7 +473,7 @@ function ScheduledPauseCard({
             type="date"
             value={dateValue}
             onChange={(event) => updateDateTime(event.target.value, timeValue)}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-[13px] font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            className="h-11 w-full rounded-xl border border-gray-200 px-3 text-[13px] font-semibold text-gray-900 outline-none transition focus:border-primary/50"
           />
         </label>
         <label className="block">
@@ -428,7 +482,7 @@ function ScheduledPauseCard({
             type="time"
             value={timeValue}
             onChange={(event) => updateDateTime(dateValue, event.target.value)}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-[13px] font-semibold text-gray-900 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            className="h-11 w-full rounded-xl border border-gray-200 px-3 text-[13px] font-semibold text-gray-900 outline-none transition focus:border-primary/50"
           />
         </label>
       </div>
@@ -436,7 +490,7 @@ function ScheduledPauseCard({
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="mt-3 flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 bg-white text-xs font-bold uppercase tracking-wider text-gray-700 shadow-sm transition active:scale-[0.98]"
+          className="mt-3 flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 text-xs font-bold uppercase tracking-wider text-gray-700 transition active:scale-[0.98]"
         >
           Clear Pause
         </button>
@@ -500,7 +554,7 @@ function ScheduleEditor({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center justify-between gap-3 bg-gray-50/50 px-4 py-4 text-left transition hover:bg-gray-50 active:bg-gray-100"
+        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition active:scale-[0.99]"
       >
         <span className="min-w-0">
           <span className="block text-[14px] font-bold text-gray-900">
@@ -510,7 +564,7 @@ function ScheduleEditor({
             {getTotalSlotCount(slots)} slots active
           </span>
         </span>
-        <div className="flex size-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
+        <div className="flex size-8 items-center justify-center rounded-full border border-gray-200">
           <i
             className={`fa-solid fa-chevron-down text-[10px] text-gray-500 transition-transform duration-300 ${open ? "rotate-180" : ""
               }`}
@@ -531,7 +585,7 @@ function ScheduleEditor({
               const daySlots = getDaySlots(slots, day);
 
               return (
-                <div key={day} className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5">
+                <div key={day} className="rounded-xl border border-gray-200 p-3.5">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-bold capitalize text-gray-900">{day}</h4>
                     <div className="flex items-center gap-2">
@@ -539,7 +593,7 @@ function ScheduleEditor({
                         <button
                           type="button"
                           onClick={() => copyAboveDay(day)}
-                          className="rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600 shadow-sm ring-1 ring-gray-200 transition active:scale-95"
+                          className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600 transition active:scale-95"
                         >
                           Copy Above
                         </button>
@@ -566,7 +620,7 @@ function ScheduleEditor({
                           onChange={(event) =>
                             updateSlot(day, index, "start", event.target.value)
                           }
-                          className="h-10 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-xs font-bold text-gray-900 outline-none transition focus:border-primary focus:ring-1 focus:ring-primary/20"
+                          className="h-10 flex-1 rounded-lg border border-gray-200 px-3 text-xs font-bold text-gray-900 outline-none transition focus:border-primary"
                         />
                         <span className="text-gray-400 text-xs font-bold">-</span>
                         <input
@@ -575,7 +629,7 @@ function ScheduleEditor({
                           onChange={(event) =>
                             updateSlot(day, index, "end", event.target.value)
                           }
-                          className="h-10 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-xs font-bold text-gray-900 outline-none transition focus:border-primary focus:ring-1 focus:ring-primary/20"
+                          className="h-10 flex-1 rounded-lg border border-gray-200 px-3 text-xs font-bold text-gray-900 outline-none transition focus:border-primary"
                         />
                         <button
                           type="button"
@@ -605,6 +659,19 @@ function getDaySlots(slots: StoreSettingsPayload["scheduled_delivery_slots"], da
 
 function getTotalSlotCount(slots: StoreSettingsPayload["scheduled_delivery_slots"]) {
   return DAYS.reduce((total, day) => total + getDaySlots(slots, day).length, 0);
+}
+
+function formatMinutesOption(minutes: number) {
+  if (minutes < 60) return `${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${remainingMinutes} min`;
 }
 
 function getPayloadFromSettings(settings: StoreSettings): StoreSettingsPayload {

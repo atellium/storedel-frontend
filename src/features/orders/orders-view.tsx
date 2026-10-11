@@ -12,8 +12,9 @@ import {
   type UserAddressPayload,
 } from "@/features/addresses/address-service";
 import { AuthGuard } from "@/features/auth/auth-guard";
-import { getStoreSettings } from "@/features/stores/stores-service";
-import type { StoreSettings } from "@/features/stores/types";
+import { getStoreCustomer, getStoreSettings } from "@/features/stores/stores-service";
+import type { StoreCustomer, StoreSettings } from "@/features/stores/types";
+import { useAppSelector } from "@/store/hooks";
 import {
   cancelOrder,
   getOrders,
@@ -59,6 +60,7 @@ export function OrdersView({ storeSlug }: { storeSlug: string }) {
 
 function OrdersContent({ storeSlug }: { storeSlug: string }) {
   const router = useRouter();
+  const user = useAppSelector((state) => state.auth.user);
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -171,9 +173,11 @@ function OrdersContent({ storeSlug }: { storeSlug: string }) {
       >
         {selectedOrder && (
           <OrderDetailsSheet
+            key={selectedOrder.id}
             order={selectedOrder}
             settings={settings}
             storeSlug={storeSlug}
+            userId={user?.id}
             addresses={addresses}
             onAddressCreate={(address) => setAddresses((current) => [address, ...current])}
             onOrderUpdate={handleOrderUpdate}
@@ -240,6 +244,7 @@ function OrderDetailsSheet({
   order,
   settings,
   storeSlug,
+  userId,
 }: {
   addresses: UserAddress[];
   onAddressCreate: (address: UserAddress) => void;
@@ -248,6 +253,7 @@ function OrderDetailsSheet({
   order: Order;
   settings: StoreSettings | null;
   storeSlug: string;
+  userId?: string;
 }) {
   const router = useRouter();
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -267,6 +273,7 @@ function OrderDetailsSheet({
   const [savingAddress, setSavingAddress] = useState(false);
   const [updatingType, setUpdatingType] = useState<OrderFulfillmentType | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [customerSettings, setCustomerSettings] = useState<StoreCustomer | null>(null);
 
   const canUpdateFulfillment = order.status === "placed" || order.status === "ready";
   const canCancelOrder = order.status === "placed" || order.status === "accepted";
@@ -274,6 +281,29 @@ function OrderDetailsSheet({
   const deliveryAddress = getOrderDeliveryAddress(order);
   const fulfillmentOptions = getFulfillmentUpdateOptions(order, settings);
   const activeAddresses = addresses.filter((address) => address.is_active);
+  const customerSettingsUserId = userId ?? order.customer?.id;
+
+  useEffect(() => {
+    if (!customerSettingsUserId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getStoreCustomer(storeSlug, customerSettingsUserId)
+      .then((nextCustomerSettings) => {
+        if (!isMounted) return;
+        setCustomerSettings(nextCustomerSettings);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setCustomerSettings(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [customerSettingsUserId, storeSlug]);
 
   useEffect(() => {
     if (!isAddressSheetOpen || addressForm.postal_code.trim().length < 3) {
@@ -323,7 +353,7 @@ function OrderDetailsSheet({
 
   const handleFulfillmentUpdate = async (type: OrderFulfillmentType, addressId?: string) => {
     if (updatingType) return;
-    const deliveryFee = getDeliveryFeeForOrder(order, settings, type);
+    const deliveryFee = getDeliveryFeeForOrder(order, settings, customerSettings, type);
     setUpdatingType(type);
     setMessage(null);
     try {
@@ -480,7 +510,12 @@ function OrderDetailsSheet({
         {canUpdateFulfillment && fulfillmentOptions.length > 0 && (
           <div className="mt-4 space-y-2.5 border-t border-gray-100 pt-4">
             {fulfillmentOptions.map((option) => {
-              const deliveryFee = getDeliveryFeeForOrder(order, settings, option.type);
+              const deliveryRule = getDeliveryRuleForOrder(
+                order,
+                settings,
+                customerSettings,
+                option.type,
+              );
 
               return (
                 <button
@@ -499,7 +534,7 @@ function OrderDetailsSheet({
                     Change to {formatFulfillmentType(option.type)}
                   </span>
                   <span className="shrink-0 rounded bg-gray-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-600 ring-1 ring-gray-200">
-                    {deliveryFee > 0 ? `+${formatPrice(deliveryFee)}` : "Free"}
+                    {deliveryRule.fee > 0 ? `+${formatPrice(deliveryRule.fee)}` : "Free"}
                   </span>
                 </button>
               );
@@ -890,16 +925,48 @@ function getFulfillmentUpdateOptions(order: Order, settings: StoreSettings | nul
   return options;
 }
 
-function getDeliveryFeeForOrder(order: Order, settings: StoreSettings | null, type: OrderFulfillmentType) {
-  if (!settings || type === "pickup") return 0;
+function getDeliveryFeeForOrder(
+  order: Order,
+  settings: StoreSettings | null,
+  customerSettings: StoreCustomer | null,
+  type: OrderFulfillmentType,
+) {
+  return getDeliveryRuleForOrder(order, settings, customerSettings, type).fee;
+}
+
+function getDeliveryRuleForOrder(
+  order: Order,
+  settings: StoreSettings | null,
+  customerSettings: StoreCustomer | null,
+  type: OrderFulfillmentType,
+) {
+  const emptyRule = { fee: 0, minimum: 0, charge: 0 };
+  if (!settings || type === "pickup") return emptyRule;
   if (type === "express_delivery") {
-    return order.subtotal < settings.express_min_order_amount
-      ? settings.express_delivery_charge
-      : 0;
+    const minimum = getCustomerNumber(
+      customerSettings?.express_min_order_amount,
+      settings.express_min_order_amount,
+    );
+    const charge = getCustomerNumber(
+      customerSettings?.express_delivery_charge,
+      settings.express_delivery_charge,
+    );
+    return { fee: order.subtotal < minimum ? charge : 0, minimum, charge };
   }
-  return order.subtotal < settings.scheduled_min_order_amount
-    ? settings.scheduled_delivery_charge
-    : 0;
+
+  const minimum = getCustomerNumber(
+    customerSettings?.scheduled_min_order_amount,
+    settings.scheduled_min_order_amount,
+  );
+  const charge = getCustomerNumber(
+    customerSettings?.scheduled_delivery_charge,
+    settings.scheduled_delivery_charge,
+  );
+  return { fee: order.subtotal < minimum ? charge : 0, minimum, charge };
+}
+
+function getCustomerNumber(value: number | null | undefined, fallback: number) {
+  return value === null || value === undefined ? fallback : value;
 }
 
 function getStatusColor(status: OrderStatus) {

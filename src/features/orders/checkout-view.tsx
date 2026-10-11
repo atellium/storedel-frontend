@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BottomSheetModal } from "@/components/modals";
@@ -25,10 +24,11 @@ import {
 } from "@/features/cart/cart-service";
 import {
   getStoreBySlug,
+  getStoreCustomer,
   getStoreSettings,
 } from "@/features/stores/stores-service";
 import { getDeliveryByText } from "@/features/stores/availability";
-import type { StoreDetails, StoreSettings } from "@/features/stores/types";
+import type { StoreCustomer, StoreDetails, StoreSettings } from "@/features/stores/types";
 import {
   createOrderFromCart,
   getOrders,
@@ -80,6 +80,7 @@ function CheckoutContent({ storeSlug }: { storeSlug: string }) {
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [store, setStore] = useState<StoreDetails | null>(null);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [customerSettings, setCustomerSettings] = useState<StoreCustomer | null>(null);
   const [addWithExisting, setAddWithExisting] = useState<boolean | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [addressSheetOpen, setAddressSheetOpen] = useState(false);
@@ -143,11 +144,13 @@ function CheckoutContent({ storeSlug }: { storeSlug: string }) {
       getStoreSettings(storeSlug),
       getOrders(storeSlug),
       getUserAddresses(),
+      user?.id ? getStoreCustomer(storeSlug, user.id).catch(() => null) : Promise.resolve(null),
     ])
-      .then(([nextCart, nextSettings, nextOrders, nextAddresses]) => {
+      .then(([nextCart, nextSettings, nextOrders, nextAddresses, nextCustomerSettings]) => {
         if (!isMounted) return;
         setCart(nextCart);
         setSettings(nextSettings);
+        setCustomerSettings(nextCustomerSettings);
         setAddresses(nextAddresses);
         setSelectedAddressId(getDefaultAddressId(nextAddresses));
         setExistingOrder(
@@ -187,7 +190,7 @@ function CheckoutContent({ storeSlug }: { storeSlug: string }) {
     return () => {
       isMounted = false;
     };
-  }, [storeSlug]);
+  }, [storeSlug, user?.id]);
 
   const handleExistingOrderChoice = (value: boolean) => {
     setAddWithExisting(value);
@@ -292,6 +295,7 @@ function CheckoutContent({ storeSlug }: { storeSlug: string }) {
           existingOrder,
           cart.subtotal,
           settings,
+          customerSettings,
           fulfillmentMethod,
           deliveryMode,
         ),
@@ -359,6 +363,7 @@ function CheckoutContent({ storeSlug }: { storeSlug: string }) {
       existingOrder,
       cart.subtotal,
       settings,
+      customerSettings,
       fulfillmentMethod,
       deliveryMode,
     )
@@ -477,6 +482,7 @@ function CheckoutContent({ storeSlug }: { storeSlug: string }) {
                         onDeliveryModeChange={setDeliveryMode}
                         onFulfillmentMethodChange={setFulfillmentMethod}
                         settings={settings}
+                        customerSettings={customerSettings}
                         subtotal={cart.subtotal}
                       />
                     )}
@@ -786,6 +792,7 @@ function ExistingOrderChoice({
 }
 
 function FulfillmentSection({
+  customerSettings,
   deliveryMode,
   fulfillmentMethod,
   onDeliveryModeChange,
@@ -793,6 +800,7 @@ function FulfillmentSection({
   settings,
   subtotal,
 }: {
+  customerSettings: StoreCustomer | null;
   deliveryMode: DeliveryMode;
   fulfillmentMethod: FulfillmentMethod;
   onDeliveryModeChange: (mode: DeliveryMode) => void;
@@ -803,14 +811,24 @@ function FulfillmentSection({
   const canPickup = settings.is_pickup_enabled;
   const canScheduled = settings.is_scheduled_delivery_enabled;
   const canExpress = settings.is_express_delivery_enabled;
-  const scheduledFee =
-    subtotal < settings.scheduled_min_order_amount
-      ? settings.scheduled_delivery_charge
-      : 0;
-  const expressFee =
-    subtotal < settings.express_min_order_amount
-      ? settings.express_delivery_charge
-      : 0;
+  const scheduledMinimum = getCustomerNumber(
+    customerSettings?.scheduled_min_order_amount,
+    settings.scheduled_min_order_amount,
+  );
+  const scheduledCharge = getCustomerNumber(
+    customerSettings?.scheduled_delivery_charge,
+    settings.scheduled_delivery_charge,
+  );
+  const expressMinimum = getCustomerNumber(
+    customerSettings?.express_min_order_amount,
+    settings.express_min_order_amount,
+  );
+  const expressCharge = getCustomerNumber(
+    customerSettings?.express_delivery_charge,
+    settings.express_delivery_charge,
+  );
+  const scheduledFee = subtotal < scheduledMinimum ? scheduledCharge : 0;
+  const expressFee = subtotal < expressMinimum ? expressCharge : 0;
 
   return (
     <div className="rounded-[20px] border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
@@ -838,7 +856,7 @@ function FulfillmentSection({
             charge={expressFee}
             description={`Arrives in ${settings.express_min_delivery_minutes}-${settings.express_max_delivery_minutes} min.`}
             icon="fa-motorcycle"
-            minimum={settings.express_min_order_amount}
+            minimum={expressMinimum}
             subtotal={subtotal}
             onClick={() => {
               onFulfillmentMethodChange("delivery");
@@ -858,7 +876,7 @@ function FulfillmentSection({
             charge={scheduledFee}
             description={getDeliveryByText(settings)}
             icon="fa-calendar-check"
-            minimum={settings.scheduled_min_order_amount}
+            minimum={scheduledMinimum}
             subtotal={subtotal}
             onClick={() => {
               onFulfillmentMethodChange("delivery");
@@ -1287,19 +1305,20 @@ function getUnavailableMessage(disabled: boolean, disableTill?: string | null) {
 function getDeliveryFee(
   subtotal: number,
   settings: StoreSettings | null,
+  customerSettings: StoreCustomer | null,
   fulfillmentMethod: FulfillmentMethod,
   deliveryMode: DeliveryMode,
 ) {
   if (!settings || fulfillmentMethod !== "delivery") return 0;
 
   if (deliveryMode === "express") {
-    return subtotal < settings.express_min_order_amount
-      ? settings.express_delivery_charge
+    return subtotal < getCustomerNumber(customerSettings?.express_min_order_amount, settings.express_min_order_amount)
+      ? getCustomerNumber(customerSettings?.express_delivery_charge, settings.express_delivery_charge)
       : 0;
   }
 
-  return subtotal < settings.scheduled_min_order_amount
-    ? settings.scheduled_delivery_charge
+  return subtotal < getCustomerNumber(customerSettings?.scheduled_min_order_amount, settings.scheduled_min_order_amount)
+    ? getCustomerNumber(customerSettings?.scheduled_delivery_charge, settings.scheduled_delivery_charge)
     : 0;
 }
 
@@ -1319,6 +1338,7 @@ function getActiveDeliveryFee(
   existingOrder: Order | null,
   subtotal: number,
   settings: StoreSettings | null,
+  customerSettings: StoreCustomer | null,
   fulfillmentMethod: FulfillmentMethod,
   deliveryMode: DeliveryMode,
 ) {
@@ -1328,17 +1348,21 @@ function getActiveDeliveryFee(
     const combinedSubtotal = existingOrder.subtotal + subtotal;
 
     if (existingOrder.fullfillment_type === "express_delivery") {
-      return combinedSubtotal < settings.express_min_order_amount
-        ? settings.express_delivery_charge
+      return combinedSubtotal < getCustomerNumber(customerSettings?.express_min_order_amount, settings.express_min_order_amount)
+        ? getCustomerNumber(customerSettings?.express_delivery_charge, settings.express_delivery_charge)
         : 0;
     }
 
-    return combinedSubtotal < settings.scheduled_min_order_amount
-      ? settings.scheduled_delivery_charge
+    return combinedSubtotal < getCustomerNumber(customerSettings?.scheduled_min_order_amount, settings.scheduled_min_order_amount)
+      ? getCustomerNumber(customerSettings?.scheduled_delivery_charge, settings.scheduled_delivery_charge)
       : 0;
   }
 
-  return getDeliveryFee(subtotal, settings, fulfillmentMethod, deliveryMode);
+  return getDeliveryFee(subtotal, settings, customerSettings, fulfillmentMethod, deliveryMode);
+}
+
+function getCustomerNumber(value: number | null | undefined, fallback: number) {
+  return value === null || value === undefined ? fallback : value;
 }
 
 function shouldDisplayDeliveryFee(

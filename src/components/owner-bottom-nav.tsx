@@ -20,6 +20,11 @@ const ownerNavItems = [
     label: "Products",
   },
   {
+    href: "customers",
+    icon: "fa-users",
+    label: "Customers",
+  },
+  {
     href: "settings",
     icon: "fa-gear",
     label: "Settings",
@@ -42,7 +47,7 @@ export function OwnerBottomNav({ storeSlug }: { storeSlug: string }) {
       aria-label="Business owner navigation"
       className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[640px] border-t border-gray-100 bg-white px-3 pb-3 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]"
     >
-      <div className="grid h-14 grid-cols-4 rounded-full bg-gray-100 p-1">
+      <div className="grid h-14 grid-cols-5 rounded-full bg-gray-100 p-1">
         {ownerNavItems.map((item) => {
           const href = `/${storeSlug}/manage/${item.href}`;
           const active =
