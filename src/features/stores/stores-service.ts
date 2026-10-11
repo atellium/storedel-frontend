@@ -5,6 +5,10 @@ import type {
   SaveStoreResponse,
   StoreDetails,
   StoreDetailsResponse,
+  StoreCustomer,
+  StoreCustomerPayload,
+  StoreCustomerResponse,
+  StoreCustomersResponse,
   StoreProductDetails,
   StoreProductsResponse,
   StoreProductDetailsResponse,
@@ -182,6 +186,46 @@ export async function saveMyStoreSettings(
   return response.data.result;
 }
 
+export async function getMyStoreCustomers(slug: string, page = 1) {
+  const response = await privateApiClient.get<StoreCustomersResponse>(
+    `/api/stores/my/${slug}/customers/`,
+    {
+      params: { page },
+    },
+  );
+
+  return response.data;
+}
+
+export async function getMyStoreCustomer(slug: string, customerId: string) {
+  const response = await privateApiClient.get<StoreCustomerResponse>(
+    `/api/stores/my/${slug}/customers/${customerId}/`,
+  );
+
+  return unwrapStoreCustomerResponse(response.data);
+}
+
+export async function saveMyStoreCustomer(
+  slug: string,
+  customerId: string,
+  payload: StoreCustomerPayload,
+) {
+  const response = await privateApiClient.patch<StoreCustomerResponse>(
+    `/api/stores/my/${slug}/customers/${customerId}/`,
+    payload,
+  );
+
+  return unwrapStoreCustomerResponse(response.data);
+}
+
+export async function getStoreCustomer(slug: string, customerId: string) {
+  const response = await privateApiClient.get<StoreCustomerResponse>(
+    `/api/stores/${slug}/settings/${customerId}/`,
+  );
+
+  return unwrapStoreCustomerResponse(response.data);
+}
+
 export async function getMyStores() {
   const response = await privateApiClient.get<{
     count: number;
@@ -293,4 +337,8 @@ function unwrapProductDetailsResponse(
   if ("product" in response && response.product) return response.product;
   if ("data" in response && response.data) return response.data;
   return response as StoreProductDetails;
+}
+
+function unwrapStoreCustomerResponse(response: StoreCustomerResponse): StoreCustomer {
+  return response.customer ?? response.result ?? (response as StoreCustomer);
 }

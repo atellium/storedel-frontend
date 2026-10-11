@@ -87,7 +87,7 @@ export function SavedStoresView({ stores: _stores }: { stores: Store[] }) {
               Your Stores
             </h2>
             <p className="text-xs font-medium leading-relaxed text-gray-500">
-              Stores you've saved or ordered from.
+              Stores you&apos;ve saved or ordered from.
             </p>
           </div>
 

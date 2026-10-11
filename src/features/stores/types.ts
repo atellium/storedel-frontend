@@ -199,6 +199,58 @@ export type StoreSettingsPayload = {
   pickup_max_preparation_minutes: number;
 };
 
+export type StoreCustomerSettings = {
+  allow_credit?: boolean;
+  preferred_delivery_window?: string;
+} & Record<string, unknown>;
+
+export type StoreCustomer = {
+  id: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  is_active: boolean;
+  scheduled_min_order_amount: number | null;
+  scheduled_delivery_charge: number | null;
+  express_min_order_amount: number | null;
+  express_delivery_charge: number | null;
+  pickup_min_order_amount: number | null;
+  cancellation_percentage: number | null;
+  settings: StoreCustomerSettings;
+  note: string;
+  order_count?: number;
+  last_order_at?: string | null;
+  total_amount?: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StoreCustomersResponse = {
+  count: number;
+  pagination: StoresResponse["pagination"] & {
+    next?: string | null;
+    previous?: string | null;
+  };
+  results: StoreCustomer[];
+};
+
+export type StoreCustomerResponse = {
+  customer?: StoreCustomer;
+  result?: StoreCustomer;
+};
+
+export type StoreCustomerPayload = {
+  is_active: boolean;
+  scheduled_min_order_amount: number | null;
+  scheduled_delivery_charge: number | null;
+  express_min_order_amount: number | null;
+  express_delivery_charge: number | null;
+  pickup_min_order_amount: number | null;
+  cancellation_percentage: number | null;
+  settings: StoreCustomerSettings;
+  note: string;
+};
+
 export type StoreProductCategory = {
   id: number;
   name: string;
