@@ -36,6 +36,14 @@ const dashboardTabs = [
     iconColor: "text-orange-600",
   },
   {
+    href: "customers",
+    icon: "fa-users",
+    title: "Customers",
+    subtitle: "Customer rules",
+    iconBg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
+  },
+  {
     href: "settings",
     icon: "fa-gear",
     title: "Settings",
